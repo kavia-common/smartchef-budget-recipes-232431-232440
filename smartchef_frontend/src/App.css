@@ -498,3 +498,31 @@
 .clearBtn:hover:not(:disabled) {
   color: var(--text);
 }
+
+/* Simple list patterns (used by Grocery list) */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.listMain {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.listTitle {
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

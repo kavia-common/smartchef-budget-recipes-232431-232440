@@ -17,6 +17,16 @@ function makeId() {
   return `g_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeGroceryText(raw) {
+  // Normalize for display (trim + collapse whitespace).
+  return String(raw || "").replace(/\s+/g, " ").trim();
+}
+
+function groceryKey(name) {
+  // Normalize for comparisons (case/whitespace-insensitive).
+  return normalizeGroceryText(name).toLowerCase();
+}
+
 function reducer(state, action) {
   switch (action.type) {
     case "setCurrency":
@@ -36,19 +46,38 @@ function reducer(state, action) {
     }
 
     case "addGroceryItem": {
-      const name = (action.name || "").trim();
+      const name = normalizeGroceryText(action.name);
+      const qty = normalizeGroceryText(action.qty);
+
       if (!name) return state;
+
+      // Prevent accidental duplicates (case/whitespace-insensitive).
+      const key = groceryKey(name);
+      const existing = state.groceryItems.find((i) => groceryKey(i.name) === key);
+
+      // If already present, we "nudge" it to the top and optionally update qty if provided.
+      if (existing) {
+        const updated = {
+          ...existing,
+          qty: qty || existing.qty
+        };
+        const rest = state.groceryItems.filter((i) => i.id !== existing.id);
+        return { ...state, groceryItems: [updated, ...rest] };
+      }
+
       const next = {
         id: makeId(),
         name,
-        qty: (action.qty || "").trim(),
+        qty,
         checked: false
       };
       return { ...state, groceryItems: [next, ...state.groceryItems] };
     }
 
     case "toggleGroceryChecked": {
-      const groceryItems = state.groceryItems.map((i) => (i.id === action.id ? { ...i, checked: !i.checked } : i));
+      const groceryItems = state.groceryItems.map((i) =>
+        i.id === action.id ? { ...i, checked: !i.checked } : i
+      );
       return { ...state, groceryItems };
     }
 
