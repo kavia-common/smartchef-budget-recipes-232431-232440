@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useAppState } from "../state/AppStateContext";
+import { getRecipeKey, useAppState } from "../state/AppStateContext";
 import { convertFromUsd, formatMoney } from "../utils/currency";
 import "../App.css";
 
@@ -10,7 +10,12 @@ import "../App.css";
  */
 export function RecipeCard({ recipe }) {
   const { state, actions } = useAppState();
-  const isFav = useMemo(() => state.favorites.some((r) => r.id === recipe.id), [state.favorites, recipe.id]);
+
+  const recipeKey = useMemo(() => getRecipeKey(recipe), [recipe]);
+
+  const isFav = useMemo(() => {
+    return state.favorites.some((r) => getRecipeKey(r) === recipeKey);
+  }, [state.favorites, recipeKey]);
 
   const price = recipe?.pricePerServingUsd != null ? convertFromUsd(recipe.pricePerServingUsd, state.currency) : null;
   const priceLabel = price != null ? formatMoney(price, state.currency) : null;
