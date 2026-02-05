@@ -5,20 +5,15 @@
  * - REACT_APP_EXPERIMENTS_ENABLED: "true" to enable experimental UI/features
  */
 
+import { getFeatureFlagsSet, isExperimentsEnabledEnv } from "./env";
+
 /**
  * PUBLIC_INTERFACE
  * Parse REACT_APP_FEATURE_FLAGS into a normalized Set.
  * @returns {Set<string>} set of enabled flags
  */
 export function getFeatureFlags() {
-  const raw = (process.env.REACT_APP_FEATURE_FLAGS || "").trim();
-  if (!raw) return new Set();
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
+  return getFeatureFlagsSet();
 }
 
 /**
@@ -29,7 +24,7 @@ export function getFeatureFlags() {
  */
 export function isFeatureEnabled(flagName) {
   if (!flagName) return false;
-  return getFeatureFlags().has(flagName);
+  return getFeatureFlagsSet().has(String(flagName).trim());
 }
 
 /**
@@ -38,5 +33,5 @@ export function isFeatureEnabled(flagName) {
  * @returns {boolean} true if enabled
  */
 export function isExperimentsEnabled() {
-  return String(process.env.REACT_APP_EXPERIMENTS_ENABLED || "").toLowerCase() === "true";
+  return isExperimentsEnabledEnv();
 }

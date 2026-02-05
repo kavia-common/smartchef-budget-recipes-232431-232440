@@ -1,14 +1,14 @@
 import { normalizeEdamamHit, normalizeSpoonacularDetails, normalizeSpoonacularListItem } from "./normalize";
+import { getApiBase, getBackendUrl } from "../config/env";
 
 /**
  * Decide whether to call third-party APIs directly (dev) or via backend proxy when configured.
- * - If REACT_APP_BACKEND_URL is set, requests go to `${BACKEND_URL}/api/...`
- * - Else direct provider calls are attempted when keys exist.
+ *
+ * Wiring rules:
+ * - If REACT_APP_API_BASE is set: use it directly for backend calls (e.g. https://example.com/api)
+ * - Else if REACT_APP_BACKEND_URL is set: fall back to `${BACKEND_URL}/api`
+ * - Else attempt direct provider calls (when keys exist); otherwise show mock data.
  */
-function getBackendBase() {
-  const backend = (process.env.REACT_APP_BACKEND_URL || "").trim();
-  return backend ? backend.replace(/\/+$/, "") : "";
-}
 
 function hasSpoonacularKey() {
   return Boolean((process.env.REACT_APP_SPOONACULAR_API_KEY || "").trim());
@@ -37,6 +37,26 @@ async function fetchJson(url, init) {
   return res.json();
 }
 
+function warnMisconfiguredEnvOnce() {
+  // Non-intrusive; only warns about configuration shape (no secrets).
+  // eslint-disable-next-line no-console
+  if (warnMisconfiguredEnvOnce.didWarn) return;
+  warnMisconfiguredEnvOnce.didWarn = true;
+
+  const backend = getBackendUrl();
+  const apiBase = getApiBase();
+
+  // If user set BACKEND_URL but API_BASE points somewhere else, it's not necessarily wrong,
+  // but it's a common confusion when requests don't go where expected.
+  if (backend && apiBase && !apiBase.startsWith(backend)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[SmartChef] REACT_APP_API_BASE ("${apiBase}") does not start with REACT_APP_BACKEND_URL ("${backend}"). This is allowed, but ensure it's intentional.`
+    );
+  }
+}
+warnMisconfiguredEnvOnce.didWarn = false;
+
 /**
  * PUBLIC_INTERFACE
  * Search recipes across available providers.
@@ -48,13 +68,14 @@ async function fetchJson(url, init) {
  * @returns {Promise<{recipes:any[], providerUsed:string, warnings:string[]}>}
  */
 export async function searchRecipes({ ingredients, maxBudgetUsd, diet, maxReadyMinutes }) {
-  const backendBase = getBackendBase();
+  const apiBase = getApiBase();
   const warnings = [];
 
   // Prefer backend proxy when present (supports hiding keys server-side).
-  if (backendBase) {
+  if (apiBase) {
+    warnMisconfiguredEnvOnce();
     const qs = buildQuery({ ingredients, maxBudgetUsd, diet, maxReadyMinutes });
-    const data = await fetchJson(`${backendBase}/api/recipes/search?${qs}`);
+    const data = await fetchJson(`${apiBase}/recipes/search?${qs}`);
     // Expect backend to already normalize; still defensively normalize if shape resembles providers.
     const recipes = Array.isArray(data?.recipes)
       ? data.recipes
@@ -141,10 +162,11 @@ export async function searchRecipes({ ingredients, maxBudgetUsd, diet, maxReadyM
  * @returns {Promise<any>} recipe
  */
 export async function getRecipeDetails({ provider, id }) {
-  const backendBase = getBackendBase();
-  if (backendBase) {
+  const apiBase = getApiBase();
+  if (apiBase) {
+    warnMisconfiguredEnvOnce();
     const qs = buildQuery({ provider, id });
-    const data = await fetchJson(`${backendBase}/api/recipes/details?${qs}`);
+    const data = await fetchJson(`${apiBase}/recipes/details?${qs}`);
     return data?.recipe || data;
   }
 
