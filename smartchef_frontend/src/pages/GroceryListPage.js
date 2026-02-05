@@ -142,7 +142,7 @@ export function GroceryListPage() {
 
   return (
     <div className="container">
-      <div className="resultsHeader" style={{ marginBottom: 10 }}>
+      <div className="resultsHeader" style={{ marginBottom: "var(--space-2)" }}>
         <div>
           <h1 className="pageTitle">Grocery list</h1>
           <p className="pageSubtitle" style={{ marginBottom: 0 }}>

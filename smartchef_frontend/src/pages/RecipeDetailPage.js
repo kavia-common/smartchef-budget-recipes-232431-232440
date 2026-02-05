@@ -36,7 +36,11 @@ export function RecipeDetailPage() {
   const cachedFavorite = useMemo(() => {
     // Prefer exact match by both id and provider to avoid collisions across providers.
     const favs = Array.isArray(state.favorites) ? state.favorites : [];
-    return favs.find((r) => String(r?.id) === String(id) && String(r?.source) === String(provider)) || null;
+    return (
+      favs.find(
+        (r) => String(r?.id) === String(id) && String(r?.source) === String(provider)
+      ) || null
+    );
   }, [state.favorites, id, provider]);
 
   const isFav = useMemo(() => {
@@ -124,10 +128,7 @@ export function RecipeDetailPage() {
         const msg = String(res.error.message || "Failed to load recipe details");
         if (cachedFavorite) {
           setError("");
-          setWarnings((prev) => [
-            ...prev,
-            msg
-          ]);
+          setWarnings((prev) => [...prev, msg]);
           return;
         }
 
@@ -190,10 +191,12 @@ export function RecipeDetailPage() {
           </button>
         </div>
 
-        <div style={{ height: 12 }} />
+        <div style={{ height: "var(--space-3)" }} />
         <div className="card">
           <div className="cardBody">
-            <p className="helper" style={{ marginTop: 0 }}>Loading recipe…</p>
+            <p className="helper" style={{ marginTop: 0 }}>
+              Loading recipe…
+            </p>
           </div>
         </div>
       </div>
@@ -212,12 +215,12 @@ export function RecipeDetailPage() {
           </button>
         </div>
 
-        <div style={{ height: 10 }} />
+        <div style={{ height: "var(--space-2)" }} />
         <div className="notice" role="alert" aria-label="Recipe details error">
           {error}
         </div>
 
-        <div style={{ height: 10 }} />
+        <div style={{ height: "var(--space-2)" }} />
         <Link className="btn btnGhost" to="/">
           Go to search
         </Link>
@@ -237,20 +240,26 @@ export function RecipeDetailPage() {
           </button>
         </div>
 
-        <div style={{ height: 12 }} />
+        <div style={{ height: "var(--space-3)" }} />
         <div className="card" aria-label="Recipe details unavailable">
           <div className="cardBody">
             <p className="helper" style={{ marginTop: 0 }}>
               No details are available for this recipe.
             </p>
             <p className="small">
-              Some providers don’t expose a full detail endpoint. If you favorite a recipe from Search, we’ll cache what we have.
+              Some providers don’t expose a full detail endpoint. If you favorite a recipe from
+              Search, we’ll cache what we have.
             </p>
           </div>
         </div>
 
         {warnings?.length ? (
-          <div className="noticeWarning" role="status" aria-live="polite" aria-label="Recipe warnings">
+          <div
+            className="noticeWarning"
+            role="status"
+            aria-live="polite"
+            aria-label="Recipe warnings"
+          >
             {warnings.map((w, idx) => (
               <div key={`${w}-${idx}`}>{w}</div>
             ))}
@@ -285,7 +294,7 @@ export function RecipeDetailPage() {
 
       {warnings?.length ? (
         <>
-          <div style={{ height: 12 }} />
+          <div style={{ height: "var(--space-3)" }} />
           <div className="noticeWarning" role="status" aria-live="polite" aria-label="Recipe warnings">
             {warnings.map((w, idx) => (
               <div key={`${w}-${idx}`}>{w}</div>
@@ -297,18 +306,27 @@ export function RecipeDetailPage() {
       {/* Soft error: show as warning when we still have cached data */}
       {error && effectiveRecipe ? (
         <>
-          <div style={{ height: 12 }} />
-          <div className="noticeWarning" role="status" aria-live="polite" aria-label="Recipe load issue">
+          <div style={{ height: "var(--space-3)" }} />
+          <div
+            className="noticeWarning"
+            role="status"
+            aria-live="polite"
+            aria-label="Recipe load issue"
+          >
             {error}
           </div>
         </>
       ) : null}
 
-      <div style={{ height: 12 }} />
+      <div style={{ height: "var(--space-3)" }} />
 
       <section className="card" aria-label="Recipe details">
         <div className="recipeThumb">
-          {effectiveRecipe.imageUrl ? <img alt="" src={effectiveRecipe.imageUrl} /> : <span className="small">No image</span>}
+          {effectiveRecipe.imageUrl ? (
+            <img alt="" src={effectiveRecipe.imageUrl} />
+          ) : (
+            <span className="small">No image</span>
+          )}
         </div>
 
         <div className="cardBody">
@@ -317,9 +335,15 @@ export function RecipeDetailPage() {
           </h1>
 
           <div className="badges" aria-label="Recipe meta">
-            {effectiveRecipe.source ? <span className="badge badgePrimary">{effectiveRecipe.source}</span> : null}
-            {effectiveRecipe.readyInMinutes ? <span className="badge">{effectiveRecipe.readyInMinutes} min</span> : null}
-            {effectiveRecipe.servings ? <span className="badge">{effectiveRecipe.servings} servings</span> : null}
+            {effectiveRecipe.source ? (
+              <span className="badge badgePrimary">{effectiveRecipe.source}</span>
+            ) : null}
+            {effectiveRecipe.readyInMinutes ? (
+              <span className="badge">{effectiveRecipe.readyInMinutes} min</span>
+            ) : null}
+            {effectiveRecipe.servings ? (
+              <span className="badge">{effectiveRecipe.servings} servings</span>
+            ) : null}
             {loading ? (
               <span className="badge" aria-label="Updating details">
                 <span className="spinner spinnerDark" aria-hidden="true" /> Updating
@@ -386,7 +410,8 @@ export function RecipeDetailPage() {
             </p>
           ) : (
             <p className="helper">
-              Instructions aren’t available for this recipe. If you favorite it from Search, we’ll keep any notes/ingredients provided there.
+              Instructions aren’t available for this recipe. If you favorite it from Search, we’ll
+              keep any notes/ingredients provided there.
             </p>
           )}
         </div>

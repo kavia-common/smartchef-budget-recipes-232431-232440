@@ -66,7 +66,7 @@ export function FavoritesPage() {
         {count > 1 ? `Sorted by ${SORTS.find((s) => s.value === sortMode)?.label || "recent"}.` : ""}
       </div>
 
-      <div className="resultsHeader" style={{ marginBottom: 10 }}>
+      <div className="resultsHeader" style={{ marginBottom: "var(--space-2)" }}>
         <div>
           <h1 className="pageTitle">Favorites</h1>
           <p className="pageSubtitle" style={{ marginBottom: 0 }}>

@@ -467,7 +467,7 @@ export function SearchPage() {
         </div>
       </section>
 
-      <div style={{ height: 14 }} />
+      <div style={{ height: "var(--space-3)" }} />
 
       <section aria-label="Search results">
         <div className="resultsHeader">

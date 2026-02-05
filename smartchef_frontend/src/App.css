@@ -8,7 +8,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(249, 250, 251, 0.85);
+  background: rgba(249, 250, 251, 0.82);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -34,12 +34,13 @@
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(37, 99, 235, 0.55));
+  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(37, 99, 235, 0.58));
   box-shadow: var(--shadow-sm);
   display: grid;
   place-items: center;
   color: white;
   font-weight: 800;
+  letter-spacing: 0.2px;
 }
 
 .brandName {
@@ -71,8 +72,8 @@
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-xs);
 }
 
 .pill label {
@@ -84,7 +85,7 @@
   border: none;
   background: transparent;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .main {
@@ -100,11 +101,13 @@
 .pageTitle {
   font-size: 22px;
   margin: 0 0 var(--space-1) 0;
+  letter-spacing: -0.2px;
 }
 
 .pageSubtitle {
   margin: 0 0 var(--space-4) 0;
   color: var(--muted);
+  line-height: 1.5;
 }
 
 .card {
@@ -143,6 +146,7 @@
 .field label {
   font-size: 12px;
   color: var(--muted);
+  font-weight: 600;
 }
 
 .input,
@@ -151,7 +155,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 12px 12px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
 .textarea {
@@ -159,22 +164,37 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 12px 12px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   min-height: 96px;
   resize: vertical;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .btn {
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease, background 120ms ease, border-color 120ms ease;
   user-select: none;
 
   /* Mobile accessibility: minimum touch target size */
@@ -190,10 +210,18 @@
   transform: translateY(1px);
 }
 
-.btnPrimary {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(37, 99, 235, 0.85));
-  color: white;
+.btn:hover:not(:disabled) {
   box-shadow: var(--shadow-sm);
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(37, 99, 235, 0.84));
+  color: white;
+  box-shadow: var(--shadow-xs);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(29, 78, 216, 0.92));
 }
 
 .btnSecondary {
@@ -203,16 +231,27 @@
   color: #7c2d12;
 }
 
+.btnSecondary:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
 .btnGhost {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.86);
   border-color: var(--border);
   color: var(--text);
+}
+
+.btnGhost:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .helper {
   margin-top: 10px;
   font-size: 12px;
   color: var(--muted);
+  line-height: 1.5;
 }
 
 .notice {
@@ -223,6 +262,7 @@
   background: rgba(239, 68, 68, 0.08);
   color: #991b1b;
   font-size: 13px;
+  box-shadow: var(--shadow-xs);
 }
 
 .grid {
@@ -246,7 +286,7 @@
 .recipeThumb {
   height: 140px;
   width: 100%;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(245, 158, 11, 0.12));
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(245, 158, 11, 0.10));
   border-bottom: 1px solid var(--border);
   display: grid;
   place-items: center;
@@ -256,6 +296,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .recipeMeta {
@@ -268,6 +309,7 @@
 .recipeName {
   margin: 0;
   font-size: 16px;
+  letter-spacing: -0.15px;
 }
 
 .badges {
@@ -283,6 +325,7 @@
   background: rgba(17, 24, 39, 0.05);
   border: 1px solid var(--border);
   color: var(--text);
+  font-weight: 700;
 }
 
 .badgePrimary {
@@ -310,7 +353,7 @@
   bottom: 0;
   z-index: 20;
   border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
 }
 
@@ -333,11 +376,15 @@
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 12px;
 
   /* Mobile accessibility: minimum touch target size */
   min-height: 44px;
+}
+
+.navLink:hover {
+  background: rgba(17, 24, 39, 0.04);
 }
 
 .navLinkActive {
@@ -395,6 +442,7 @@
   background: rgba(245, 158, 11, 0.12);
   color: #92400e;
   font-size: 13px;
+  box-shadow: var(--shadow-xs);
 }
 
 .noticeInfo {
@@ -405,6 +453,7 @@
   background: rgba(37, 99, 235, 0.08);
   color: #1d4ed8;
   font-size: 13px;
+  box-shadow: var(--shadow-xs);
 }
 
 .resultsHeader {
@@ -419,6 +468,7 @@
 .resultsHeader h2 {
   margin: 0;
   font-size: 16px;
+  letter-spacing: -0.1px;
 }
 
 .resultsHeaderMeta {
@@ -465,7 +515,7 @@
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.65) 50%,
+    rgba(255, 255, 255, 0.62) 50%,
     rgba(255, 255, 255, 0) 100%
   );
   animation: shimmer 1200ms ease-in-out infinite;
@@ -500,6 +550,7 @@
   place-items: center;
   cursor: pointer;
   color: var(--muted);
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
 .clearBtn:disabled {
@@ -509,6 +560,8 @@
 
 .clearBtn:hover:not(:disabled) {
   color: var(--text);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Simple list patterns (used by Grocery list) */
@@ -524,6 +577,10 @@
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
+}
+
+.listRow:last-child {
+  border-bottom: none;
 }
 
 .listMain {

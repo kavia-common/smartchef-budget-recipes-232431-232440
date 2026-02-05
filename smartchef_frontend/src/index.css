@@ -1,4 +1,5 @@
 :root {
+  /* Ocean Professional core palette */
   --color-primary: #2563eb;
   --color-secondary: #f59e0b;
   --color-success: #f59e0b;
@@ -9,19 +10,27 @@
   --text: #111827;
   --muted: #6b7280;
 
+  /* Softer, more consistent borders and shadows */
   --border: rgba(17, 24, 39, 0.12);
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.08);
-  --shadow-md: 0 8px 24px rgba(17, 24, 39, 0.12);
+  --border-strong: rgba(17, 24, 39, 0.18);
 
+  --shadow-xs: 0 1px 1px rgba(17, 24, 39, 0.06);
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.08), 0 4px 10px rgba(17, 24, 39, 0.06);
+  --shadow-md: 0 10px 28px rgba(17, 24, 39, 0.12);
+
+  /* Unified radii (slightly tighter for a more “professional” feel) */
   --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
+  /* Unified spacing scale */
   --space-1: 6px;
   --space-2: 10px;
   --space-3: 14px;
   --space-4: 18px;
   --space-5: 24px;
+  --space-6: 30px;
 
   --font: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
