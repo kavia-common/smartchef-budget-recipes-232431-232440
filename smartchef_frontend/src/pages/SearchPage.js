@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { searchRecipes } from "../api/client";
 import { isExperimentsEnabled, isFeatureEnabled } from "../config/flags";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -14,6 +14,64 @@ const DIETS = [
   { value: "ketogenic", label: "Keto" }
 ];
 
+function isBlank(s) {
+  return !String(s || "").trim();
+}
+
+function parsePositiveNumberOrNull(raw) {
+  const trimmed = String(raw || "").trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function isValidDietValue(value) {
+  return DIETS.some((d) => d.value === value);
+}
+
+function makeFieldErrors({ ingredients, diet, maxBudgetUsd, maxReadyMinutes }) {
+  const errs = {};
+
+  if (isBlank(ingredients)) {
+    errs.ingredients = "Add at least one ingredient to search.";
+  }
+
+  if (!isValidDietValue(diet || "")) {
+    errs.diet = "Selected diet filter is not recognized.";
+  }
+
+  const budget = parsePositiveNumberOrNull(maxBudgetUsd);
+  if (String(maxBudgetUsd || "").trim() && budget === null) {
+    errs.maxBudgetUsd = "Budget must be a positive number.";
+  }
+
+  const minutes = parsePositiveNumberOrNull(maxReadyMinutes);
+  if (String(maxReadyMinutes || "").trim() && minutes === null) {
+    errs.maxReadyMinutes = "Cook time must be a positive number.";
+  }
+
+  return errs;
+}
+
+function firstErrorMessage(fieldErrors) {
+  const keys = ["ingredients", "maxBudgetUsd", "diet", "maxReadyMinutes"];
+  for (const k of keys) {
+    if (fieldErrors?.[k]) return fieldErrors[k];
+  }
+  return "";
+}
+
+function RecipeSkeletonGrid({ count = 6 }) {
+  return (
+    <div className="grid" aria-label="Loading recipes">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div key={`sk-${idx}`} className="skeleton" aria-hidden="true" />
+      ))}
+    </div>
+  );
+}
+
 /**
  * PUBLIC_INTERFACE
  * Main recipe discovery page.
@@ -27,15 +85,28 @@ export function SearchPage() {
   const [maxBudgetUsd, setMaxBudgetUsd] = useState("");
   const [maxReadyMinutes, setMaxReadyMinutes] = useState("");
 
+  /**
+   * Stable API-client return shape handling:
+   * - `recipes`: array (possibly empty)
+   * - `warnings`: array of strings
+   * - `error`: ApiError|null (client never throws by design)
+   */
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState([]);
   const [providerUsed, setProviderUsed] = useState("");
   const [warnings, setWarnings] = useState([]);
   const [error, setError] = useState("");
 
-  const speech = useSpeechRecognition();
+  // Track if user has run at least one search, to distinguish "initial" vs "empty results".
+  const [hasSearched, setHasSearched] = useState(false);
 
+  // For inline validation messaging and to drive "reset invalid" behavior.
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const speech = useSpeechRecognition();
   const canVoice = voiceEnabled && speech.supported;
+
+  const ingredientsRef = useRef(null);
 
   useEffect(() => {
     if (!canVoice) return;
@@ -53,36 +124,106 @@ export function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speech.transcript, canVoice]);
 
-  const parsedBudget = useMemo(() => {
-    const n = Number(maxBudgetUsd);
-    return Number.isFinite(n) && n > 0 ? n : undefined;
-  }, [maxBudgetUsd]);
+  const parsedBudget = useMemo(() => parsePositiveNumberOrNull(maxBudgetUsd) ?? undefined, [maxBudgetUsd]);
+  const parsedMinutes = useMemo(() => parsePositiveNumberOrNull(maxReadyMinutes) ?? undefined, [maxReadyMinutes]);
 
-  const parsedMinutes = useMemo(() => {
-    const n = Number(maxReadyMinutes);
-    return Number.isFinite(n) && n > 0 ? n : undefined;
-  }, [maxReadyMinutes]);
+  const viewState = useMemo(() => {
+    if (loading) return "loading";
+    if (error) return "error";
+    if (!hasSearched) return "initial";
+    if (!recipes?.length) return "empty";
+    return "success";
+  }, [loading, error, hasSearched, recipes]);
+
+  const runValidation = () => {
+    const errs = makeFieldErrors({ ingredients, diet, maxBudgetUsd, maxReadyMinutes });
+    setFieldErrors(errs);
+    return errs;
+  };
+
+  const resetInvalidFilters = (errs) => {
+    // Only reset fields that are invalid, to avoid surprising user.
+    if (errs?.maxBudgetUsd) setMaxBudgetUsd("");
+    if (errs?.maxReadyMinutes) setMaxReadyMinutes("");
+    if (errs?.diet) setDiet("");
+  };
 
   const onSearch = async (e) => {
     e?.preventDefault?.();
+
+    const errs = runValidation();
+    if (Object.keys(errs).length) {
+      // Keep the UI responsive and helpful:
+      // - reset only invalid filters
+      // - show a single user-friendly error message (plus per-field small hints)
+      resetInvalidFilters(errs);
+      setError(firstErrorMessage(errs) || "Please fix the highlighted fields.");
+      return;
+    }
+
+    setHasSearched(true);
     setLoading(true);
     setError("");
     setWarnings([]);
-    try {
-      const res = await searchRecipes({
-        ingredients,
-        maxBudgetUsd: parsedBudget,
-        diet,
-        maxReadyMinutes: parsedMinutes
-      });
-      setRecipes(res.recipes || []);
-      setProviderUsed(res.providerUsed || "");
-      setWarnings(res.warnings || []);
-    } catch (err) {
-      setError(err?.message || "Search failed");
+
+    const trimmedIngredients = String(ingredients || "").trim();
+
+    const res = await searchRecipes({
+      ingredients: trimmedIngredients,
+      maxBudgetUsd: parsedBudget,
+      diet: diet || "",
+      maxReadyMinutes: parsedMinutes
+    });
+
+    // Ensure consistent rendering with the hardened client return shape.
+    const nextRecipes = Array.isArray(res?.recipes) ? res.recipes : [];
+    const nextWarnings = Array.isArray(res?.warnings) ? res.warnings : [];
+    const nextError = res?.error?.message ? String(res.error.message) : "";
+
+    setRecipes(nextRecipes);
+    setProviderUsed(String(res?.providerUsed || ""));
+    setWarnings(nextWarnings);
+
+    if (nextError) {
+      // If the client reports an error (non-throwing), ensure the page shows error-state UI.
+      setError(nextError);
       setRecipes([]);
-    } finally {
-      setLoading(false);
+    }
+
+    setLoading(false);
+  };
+
+  const resetFilters = () => {
+    setDiet("");
+    setMaxBudgetUsd("");
+    setMaxReadyMinutes("");
+    setFieldErrors((prev) => ({ ...prev, diet: undefined, maxBudgetUsd: undefined, maxReadyMinutes: undefined }));
+  };
+
+  const clearResults = () => {
+    setHasSearched(false);
+    setRecipes([]);
+    setProviderUsed("");
+    setWarnings([]);
+    setError("");
+  };
+
+  const clearIngredients = () => {
+    setIngredients("");
+    setFieldErrors((prev) => ({ ...prev, ingredients: undefined }));
+    try {
+      ingredientsRef.current?.focus?.();
+    } catch {
+      // ignore
+    }
+  };
+
+  const onKeyDownSubmit = (e) => {
+    // Support keyboard submit (Enter) in inputs/selects.
+    // Textarea keeps newline behavior.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSearch(e);
     }
   };
 
@@ -94,7 +235,9 @@ export function SearchPage() {
       <section className="card" aria-label="Search controls">
         <div className="cardHeader">
           <strong>Ingredients + filters</strong>
-          <span className="small">Currency: <b>{state.currency}</b>. Budget filters use USD internally.</span>
+          <span className="small">
+            Currency: <b>{state.currency}</b>. Budget filters use USD internally.
+          </span>
         </div>
 
         <div className="cardBody">
@@ -102,31 +245,46 @@ export function SearchPage() {
             <div className="field">
               <label htmlFor="ingredients">Ingredients (comma-separated)</label>
               <textarea
+                ref={ingredientsRef}
                 id="ingredients"
                 className="textarea"
                 value={ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
                 placeholder="e.g., eggs, tomato, pasta"
+                aria-invalid={Boolean(fieldErrors.ingredients)}
+                aria-describedby={fieldErrors.ingredients ? "ingredients-help" : undefined}
               />
-              {canVoice ? (
-                <div className="row" style={{ marginTop: 10 }}>
-                  <button
-                    type="button"
-                    className="btn btnGhost"
-                    onClick={speech.listening ? speech.stop : speech.start}
-                    aria-pressed={speech.listening}
-                  >
-                    {speech.listening ? "Stop voice" : "Add by voice"}
-                  </button>
-                  <span className="helper">
-                    Uses your browser’s Web Speech API. {speech.error ? `Error: ${speech.error}` : ""}
+              {fieldErrors.ingredients ? (
+                <span id="ingredients-help" className="small" style={{ color: "var(--color-error)" }}>
+                  {fieldErrors.ingredients}
+                </span>
+              ) : null}
+
+              <div className="row" style={{ marginTop: 10, alignItems: "center" }}>
+                <button type="button" className="btn btnGhost" onClick={clearIngredients} disabled={isBlank(ingredients)}>
+                  Clear ingredients
+                </button>
+
+                {canVoice ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btnGhost"
+                      onClick={speech.listening ? speech.stop : speech.start}
+                      aria-pressed={speech.listening}
+                    >
+                      {speech.listening ? "Stop voice" : "Add by voice"}
+                    </button>
+                    <span className="helper" style={{ marginTop: 0 }}>
+                      Uses your browser’s Web Speech API. {speech.error ? `Error: ${speech.error}` : ""}
+                    </span>
+                  </>
+                ) : (
+                  <span className="helper" style={{ marginTop: 0 }}>
+                    Voice input is optional. Enable with <code>REACT_APP_FEATURE_FLAGS=voice</code> (and a supported browser).
                   </span>
-                </div>
-              ) : (
-                <div className="helper">
-                  Voice input is optional. Enable with <code>REACT_APP_FEATURE_FLAGS=voice</code> (and a supported browser).
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="divider" />
@@ -134,71 +292,145 @@ export function SearchPage() {
             <div className="row">
               <div className="field">
                 <label htmlFor="budget">Max budget (USD)</label>
-                <input
-                  id="budget"
-                  className="input"
-                  inputMode="decimal"
-                  value={maxBudgetUsd}
-                  onChange={(e) => setMaxBudgetUsd(e.target.value)}
-                  placeholder="e.g., 10"
-                  aria-describedby="budget-help"
-                />
+                <div className="inputWithAffordance">
+                  <input
+                    id="budget"
+                    className="input"
+                    inputMode="decimal"
+                    value={maxBudgetUsd}
+                    onChange={(e) => setMaxBudgetUsd(e.target.value)}
+                    onBlur={() => {
+                      const errs = makeFieldErrors({ ingredients, diet, maxBudgetUsd, maxReadyMinutes });
+                      setFieldErrors(errs);
+                      if (errs.maxBudgetUsd) setMaxBudgetUsd("");
+                    }}
+                    onKeyDown={onKeyDownSubmit}
+                    placeholder="e.g., 10"
+                    aria-describedby="budget-help"
+                    aria-invalid={Boolean(fieldErrors.maxBudgetUsd)}
+                  />
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={() => setMaxBudgetUsd("")}
+                    disabled={isBlank(maxBudgetUsd)}
+                    aria-label="Clear budget filter"
+                  >
+                    ×
+                  </button>
+                </div>
                 <span id="budget-help" className="small">
                   If provider supports price filters, we apply it; otherwise we show estimates when available.
+                  {fieldErrors.maxBudgetUsd ? (
+                    <>
+                      {" "}
+                      <span style={{ color: "var(--color-error)" }}>{fieldErrors.maxBudgetUsd}</span>
+                    </>
+                  ) : null}
                 </span>
               </div>
 
               <div className="field">
                 <label htmlFor="diet">Dietary preference</label>
-                <select id="diet" className="select" value={diet} onChange={(e) => setDiet(e.target.value)}>
+                <select
+                  id="diet"
+                  className="select"
+                  value={diet}
+                  onChange={(e) => setDiet(e.target.value)}
+                  onKeyDown={onKeyDownSubmit}
+                  aria-invalid={Boolean(fieldErrors.diet)}
+                >
                   {DIETS.map((d) => (
                     <option key={d.value || "any"} value={d.value}>
                       {d.label}
                     </option>
                   ))}
                 </select>
+                {fieldErrors.diet ? (
+                  <span className="small" style={{ color: "var(--color-error)" }}>
+                    {fieldErrors.diet}
+                  </span>
+                ) : null}
               </div>
 
               <div className="field">
                 <label htmlFor="time">Max cook time (minutes)</label>
-                <input
-                  id="time"
-                  className="input"
-                  inputMode="numeric"
-                  value={maxReadyMinutes}
-                  onChange={(e) => setMaxReadyMinutes(e.target.value)}
-                  placeholder="e.g., 30"
-                />
+                <div className="inputWithAffordance">
+                  <input
+                    id="time"
+                    className="input"
+                    inputMode="numeric"
+                    value={maxReadyMinutes}
+                    onChange={(e) => setMaxReadyMinutes(e.target.value)}
+                    onBlur={() => {
+                      const errs = makeFieldErrors({ ingredients, diet, maxBudgetUsd, maxReadyMinutes });
+                      setFieldErrors(errs);
+                      if (errs.maxReadyMinutes) setMaxReadyMinutes("");
+                    }}
+                    onKeyDown={onKeyDownSubmit}
+                    placeholder="e.g., 30"
+                    aria-invalid={Boolean(fieldErrors.maxReadyMinutes)}
+                  />
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={() => setMaxReadyMinutes("")}
+                    disabled={isBlank(maxReadyMinutes)}
+                    aria-label="Clear cook time filter"
+                  >
+                    ×
+                  </button>
+                </div>
+                {fieldErrors.maxReadyMinutes ? (
+                  <span className="small" style={{ color: "var(--color-error)" }}>
+                    {fieldErrors.maxReadyMinutes}
+                  </span>
+                ) : null}
               </div>
             </div>
 
             <div className="row" style={{ marginTop: 14 }}>
               <button type="submit" className="btn btnPrimary" disabled={loading}>
-                {loading ? "Searching…" : "Search recipes"}
+                {loading ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Searching…
+                  </>
+                ) : (
+                  "Search recipes"
+                )}
               </button>
+
+              <button type="button" className="btn btnGhost" onClick={resetFilters} disabled={loading}>
+                Reset filters
+              </button>
+
               <button
                 type="button"
                 className="btn btnGhost"
-                onClick={() => {
-                  setDiet("");
-                  setMaxBudgetUsd("");
-                  setMaxReadyMinutes("");
-                }}
+                onClick={clearResults}
+                disabled={loading || (!hasSearched && !recipes.length && !warnings.length && !error)}
               >
-                Reset filters
+                Clear results
               </button>
             </div>
 
-            {providerUsed ? <p className="helper">Provider used: <b>{providerUsed}</b></p> : null}
+            {providerUsed ? (
+              <p className="helper">
+                Provider used: <b>{providerUsed}</b>
+              </p>
+            ) : null}
+
             {warnings?.length ? (
-              <div className="notice" role="status" aria-live="polite">
+              <div className="noticeWarning" role="status" aria-live="polite" aria-label="Search warnings">
                 {warnings.map((w, idx) => (
                   <div key={`${w}-${idx}`}>{w}</div>
                 ))}
               </div>
             ) : null}
+
             {error ? (
-              <div className="notice" role="alert">
+              <div className="notice" role="alert" aria-label="Search error">
                 {error}
               </div>
             ) : null}
@@ -209,15 +441,86 @@ export function SearchPage() {
       <div style={{ height: 14 }} />
 
       <section aria-label="Search results">
-        {recipes?.length ? (
+        <div className="resultsHeader">
+          <h2>Results</h2>
+          <div className="resultsHeaderMeta" aria-label="Results meta">
+            {loading ? (
+              <span className="badge">
+                <span className="spinner spinnerDark" aria-hidden="true" /> Loading
+              </span>
+            ) : null}
+            {hasSearched && !loading ? <span className="badge">{recipes.length} recipes</span> : null}
+          </div>
+        </div>
+
+        {viewState === "initial" ? (
+          <div className="card">
+            <div className="cardBody">
+              <p className="helper" style={{ marginTop: 0 }}>
+                Start by entering a few ingredients (comma-separated), then tap <b>Search recipes</b>.
+              </p>
+              <div className="noticeInfo" role="note">
+                Tip: On mobile, you can press <b>Enter</b> from any filter field to submit.
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {viewState === "loading" ? <RecipeSkeletonGrid count={6} /> : null}
+
+        {viewState === "error" ? (
+          <div className="card">
+            <div className="cardBody">
+              <p className="helper" style={{ marginTop: 0 }}>
+                We couldn’t complete that search. Try adjusting filters or searching again.
+              </p>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn btnPrimary" type="button" onClick={onSearch} disabled={loading}>
+                  Retry search
+                </button>
+                <button className="btn btnGhost" type="button" onClick={clearResults} disabled={loading}>
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {viewState === "empty" ? (
+          <div className="card">
+            <div className="cardBody">
+              <p className="helper" style={{ marginTop: 0 }}>
+                No recipes matched those filters. Try removing a filter or broadening your ingredients.
+              </p>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn btnGhost" type="button" onClick={resetFilters}>
+                  Reset filters
+                </button>
+                <button
+                  className="btn btnPrimary"
+                  type="button"
+                  onClick={() => {
+                    try {
+                      ingredientsRef.current?.focus?.();
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  Edit ingredients
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {viewState === "success" ? (
           <div className="grid">
             {recipes.map((r) => (
               <RecipeCard key={`${r.source}:${r.id}`} recipe={r} />
             ))}
           </div>
-        ) : (
-          <p className="helper">No recipes yet—run a search to get started.</p>
-        )}
+        ) : null}
       </section>
     </div>
   );
