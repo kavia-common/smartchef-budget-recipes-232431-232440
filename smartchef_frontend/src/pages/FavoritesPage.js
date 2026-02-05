@@ -61,6 +61,11 @@ export function FavoritesPage() {
 
   return (
     <div className="container">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {count ? `${count} favorites saved.` : "No favorites saved."}
+        {count > 1 ? `Sorted by ${SORTS.find((s) => s.value === sortMode)?.label || "recent"}.` : ""}
+      </div>
+
       <div className="resultsHeader" style={{ marginBottom: 10 }}>
         <div>
           <h1 className="pageTitle">Favorites</h1>

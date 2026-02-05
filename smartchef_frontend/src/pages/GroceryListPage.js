@@ -255,13 +255,14 @@ export function GroceryListPage() {
                 className="btn btnPrimary"
                 disabled={!normalizeText(name)}
                 aria-disabled={!normalizeText(name)}
+                aria-label="Add item to grocery list"
               >
                 Add to list
               </button>
             </div>
 
             {/* Accessible live region for lightweight feedback (non-critical) */}
-            <div className="sr-only" aria-live="polite">
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
               {statusMsg}
             </div>
           </form>

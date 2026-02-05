@@ -262,8 +262,13 @@ export function RecipeDetailPage() {
 
   return (
     <div className="container">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {loading ? "Updating recipe details." : ""}
+        {addedToGrocery ? "Ingredients added to grocery list." : ""}
+      </div>
+
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <button type="button" className="btn btnGhost" onClick={onBack}>
+        <button type="button" className="btn btnGhost" onClick={onBack} aria-label="Go back">
           ← Back
         </button>
 
@@ -272,6 +277,7 @@ export function RecipeDetailPage() {
           className="btn btnSecondary"
           onClick={() => actions.toggleFavorite(effectiveRecipe)}
           aria-pressed={isFav}
+          aria-label={isFav ? `Remove ${title} from favorites` : `Add ${title} to favorites`}
         >
           {isFav ? "Unfavorite" : "Favorite"}
         </button>

@@ -59,8 +59,45 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid rgba(245, 158, 11, 0.55);
+  outline: 3px solid rgba(245, 158, 11, 0.65);
   outline-offset: 2px;
+}
+
+/* Accessibility helpers */
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+  z-index: 9999;
+  transform: translateY(-200%);
+  transition: transform 120ms ease;
+}
+
+.skipLink:focus,
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+
+  .spinner,
+  .skeleton::after {
+    animation: none !important;
+  }
+
+  .btn {
+    transition: none !important;
+  }
 }
 
 .sr-only {

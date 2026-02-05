@@ -92,6 +92,11 @@
   width: 100%;
 }
 
+/* Ensure skip-link target isn't hidden behind sticky header */
+.main:focus {
+  outline: none;
+}
+
 .pageTitle {
   font-size: 22px;
   margin: 0 0 var(--space-1) 0;
@@ -171,6 +176,9 @@
   gap: 10px;
   transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
   user-select: none;
+
+  /* Mobile accessibility: minimum touch target size */
+  min-height: 44px;
 }
 
 .btn:disabled {
@@ -189,9 +197,10 @@
 }
 
 .btnSecondary {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.35);
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.38);
+  /* Darker amber/brown for stronger contrast on light background */
+  color: #7c2d12;
 }
 
 .btnGhost {
@@ -320,18 +329,21 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 10px;
+  padding: 12px 10px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   color: var(--muted);
   font-weight: 700;
   font-size: 12px;
+
+  /* Mobile accessibility: minimum touch target size */
+  min-height: 44px;
 }
 
 .navLinkActive {
-  color: var(--text);
-  border-color: rgba(37, 99, 235, 0.22);
-  background: rgba(37, 99, 235, 0.10);
+  color: #0f172a;
+  border-color: rgba(37, 99, 235, 0.28);
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .kpiRow {
@@ -479,11 +491,11 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.97);
   display: grid;
   place-items: center;
   cursor: pointer;

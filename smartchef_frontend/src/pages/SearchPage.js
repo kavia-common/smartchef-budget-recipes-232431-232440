@@ -229,6 +229,13 @@ export function SearchPage() {
 
   return (
     <div className="container">
+      {/* Live region for async updates: loading / result counts / errors */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {loading ? "Searching recipes." : ""}
+        {!loading && hasSearched ? `${recipes.length} recipes found.` : ""}
+        {error ? `Error: ${error}` : ""}
+      </div>
+
       <h1 className="pageTitle">SmartChef</h1>
       <p className="pageSubtitle">Find budget-friendly recipes using what you already have.</p>
 
@@ -241,7 +248,7 @@ export function SearchPage() {
         </div>
 
         <div className="cardBody">
-          <form onSubmit={onSearch}>
+          <form onSubmit={onSearch} aria-describedby="search-status">
             <div className="field">
               <label htmlFor="ingredients">Ingredients (comma-separated)</label>
               <textarea
@@ -261,7 +268,13 @@ export function SearchPage() {
               ) : null}
 
               <div className="row" style={{ marginTop: 10, alignItems: "center" }}>
-                <button type="button" className="btn btnGhost" onClick={clearIngredients} disabled={isBlank(ingredients)}>
+                <button
+                  type="button"
+                  className="btn btnGhost"
+                  onClick={clearIngredients}
+                  disabled={isBlank(ingredients)}
+                  aria-label="Clear ingredients input"
+                >
                   Clear ingredients
                 </button>
 
@@ -272,15 +285,16 @@ export function SearchPage() {
                       className="btn btnGhost"
                       onClick={speech.listening ? speech.stop : speech.start}
                       aria-pressed={speech.listening}
+                      aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
                     >
                       {speech.listening ? "Stop voice" : "Add by voice"}
                     </button>
-                    <span className="helper" style={{ marginTop: 0 }}>
+                    <span className="helper" style={{ marginTop: 0 }} id="voice-help">
                       Uses your browser’s Web Speech API. {speech.error ? `Error: ${speech.error}` : ""}
                     </span>
                   </>
                 ) : (
-                  <span className="helper" style={{ marginTop: 0 }}>
+                  <span className="helper" style={{ marginTop: 0 }} id="voice-help">
                     Voice input is optional. Enable with <code>REACT_APP_FEATURE_FLAGS=voice</code> (and a supported browser).
                   </span>
                 )}
@@ -390,7 +404,13 @@ export function SearchPage() {
             </div>
 
             <div className="row" style={{ marginTop: 14 }}>
-              <button type="submit" className="btn btnPrimary" disabled={loading}>
+              <button
+                type="submit"
+                className="btn btnPrimary"
+                disabled={loading}
+                aria-disabled={loading}
+                aria-label={loading ? "Searching recipes" : "Search recipes"}
+              >
                 {loading ? (
                   <>
                     <span className="spinner" aria-hidden="true" />
@@ -413,6 +433,15 @@ export function SearchPage() {
               >
                 Clear results
               </button>
+            </div>
+
+            {/* Form status for assistive tech (referenced by aria-describedby on form) */}
+            <div id="search-status" className="sr-only" aria-live="polite" aria-atomic="true">
+              {loading ? "Searching recipes." : ""}
+              {!loading && hasSearched ? `${recipes.length} recipes found.` : ""}
+              {providerUsed ? `Provider used: ${providerUsed}.` : ""}
+              {warnings?.length ? `Warnings: ${warnings.join(" ")}` : ""}
+              {error ? `Error: ${error}` : ""}
             </div>
 
             {providerUsed ? (

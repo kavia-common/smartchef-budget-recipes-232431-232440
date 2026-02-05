@@ -22,13 +22,37 @@ function usePageMeta() {
   }, [title]);
 }
 
+function useRouteChangeFocus() {
+  const loc = useLocation();
+
+  React.useEffect(() => {
+    // Move focus to main landmark on route change for keyboard/screen-reader users.
+    // This avoids "focus loss" when navigation occurs without a full page load.
+    const el = document.getElementById("main-content");
+    if (!el) return;
+
+    window.setTimeout(() => {
+      try {
+        el.focus();
+      } catch {
+        // ignore
+      }
+    }, 0);
+  }, [loc.pathname]);
+}
+
 // PUBLIC_INTERFACE
 function App() {
   usePageMeta();
+  useRouteChangeFocus();
   const { state, actions } = useAppState();
 
   return (
     <div className="appShell">
+      <a className="skipLink" href="#main-content">
+        Skip to main content
+      </a>
+
       <header className="topBar">
         <div className="topBarInner">
           <div className="brand" aria-label="SmartChef">
@@ -57,7 +81,13 @@ function App() {
         </div>
       </header>
 
-      <main className="main" role="main">
+      <main
+        className="main"
+        id="main-content"
+        role="main"
+        tabIndex={-1}
+        aria-label="Main content"
+      >
         <Routes>
           <Route path="/" element={<SearchPage />} />
           <Route path="/recipes/:provider/:id" element={<RecipeDetailPage />} />
