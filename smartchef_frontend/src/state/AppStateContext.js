@@ -91,6 +91,10 @@ function reducer(state, action) {
       return { ...state, groceryItems };
     }
 
+    case "clearAllGroceryItems": {
+      return { ...state, groceryItems: [] };
+    }
+
     default:
       return state;
   }
@@ -128,6 +132,11 @@ function buildActions(dispatch) {
     // PUBLIC_INTERFACE
     clearChecked() {
       dispatch({ type: "clearChecked" });
+    },
+    // PUBLIC_INTERFACE
+    clearAllGroceryItems() {
+      /** Clear entire grocery list (local-only). */
+      dispatch({ type: "clearAllGroceryItems" });
     }
   };
 }

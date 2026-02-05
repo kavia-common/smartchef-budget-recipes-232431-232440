@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAppState } from "../state/AppStateContext";
 import "../App.css";
 
@@ -19,56 +19,89 @@ export function GroceryListPage() {
   const [name, setName] = useState("");
   const [qty, setQty] = useState("");
 
-  // Lightweight UX feedback for "duplicate prevented" or "updated existing".
+  // Lightweight UX feedback for "added/duplicate/removed/cleared".
   const [statusMsg, setStatusMsg] = useState("");
+  const [inlineMsg, setInlineMsg] = useState("");
+  const statusTimerRef = useRef(null);
+
   const itemInputRef = useRef(null);
 
+  const items = Array.isArray(state.groceryItems) ? state.groceryItems : [];
+
   const stats = useMemo(() => {
-    const items = Array.isArray(state.groceryItems) ? state.groceryItems : [];
     const total = items.length;
     const checked = items.filter((i) => i.checked).length;
     return { total, checked };
-  }, [state.groceryItems]);
+  }, [items]);
 
-  const hasDuplicateInList = useMemo(() => {
-    const k = keyFor(name);
-    if (!k) return false;
-    return (state.groceryItems || []).some((i) => keyFor(i.name) === k);
-  }, [name, state.groceryItems]);
+  const proposedKey = useMemo(() => keyFor(name), [name]);
 
-  const clearStatusSoon = () => {
-    window.setTimeout(() => setStatusMsg(""), 1600);
+  const duplicateItem = useMemo(() => {
+    if (!proposedKey) return null;
+    return items.find((i) => keyFor(i.name) === proposedKey) || null;
+  }, [items, proposedKey]);
+
+  const setStatus = (msg) => {
+    setStatusMsg(msg || "");
+    if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = window.setTimeout(() => setStatusMsg(""), 1600);
   };
 
-  const onAdd = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    return () => {
+      if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current);
+    };
+  }, []);
 
-    const normName = normalizeText(name);
-    const normQty = normalizeText(qty);
+  const resetInline = () => setInlineMsg("");
 
-    if (!normName) return;
-
-    const already = (state.groceryItems || []).some((i) => keyFor(i.name) === keyFor(normName));
-
-    actions.addGroceryItem(normName, normQty);
-
-    // Keep keyboard flow friendly: clear inputs and focus back to item.
-    setName("");
-    setQty("");
-
-    if (already) {
-      setStatusMsg("Item already on your list — moved to top / updated quantity.");
-      clearStatusSoon();
-    } else {
-      setStatusMsg("Added to grocery list.");
-      clearStatusSoon();
-    }
-
+  const focusItemInput = () => {
     try {
       itemInputRef.current?.focus?.();
     } catch {
       // ignore
     }
+  };
+
+  const onAdd = (e) => {
+    e?.preventDefault?.();
+
+    const normName = normalizeText(name);
+    const normQty = normalizeText(qty);
+
+    if (!normName) {
+      setInlineMsg("Enter an item name to add it.");
+      setStatus("");
+      focusItemInput();
+      return;
+    }
+
+    // Explicitly prevent duplicate adds; AppState also prevents duplicates as a safety net.
+    const existing = items.find((i) => keyFor(i.name) === keyFor(normName));
+    if (existing) {
+      const updatedQty = normQty || existing.qty;
+      actions.addGroceryItem(normName, normQty);
+
+      setName("");
+      setQty("");
+      resetInline();
+
+      setStatus(
+        updatedQty && updatedQty !== existing.qty
+          ? `Updated “${existing.name}” quantity and moved it to the top.`
+          : `“${existing.name}” is already on your list (moved to the top).`
+      );
+      focusItemInput();
+      return;
+    }
+
+    actions.addGroceryItem(normName, normQty);
+
+    setName("");
+    setQty("");
+    resetInline();
+    setStatus("Added to grocery list.");
+    focusItemInput();
   };
 
   const onNameKeyDown = (e) => {
@@ -90,33 +123,65 @@ export function GroceryListPage() {
   const onClearChecked = () => {
     if (!stats.checked) return;
     actions.clearChecked();
-    setStatusMsg("Cleared checked items.");
-    clearStatusSoon();
+    setStatus("Cleared checked items.");
+  };
+
+  const onClearAll = () => {
+    if (!stats.total) return;
+    const ok = window.confirm("Clear your entire grocery list on this device?");
+    if (!ok) return;
+    actions.clearAllGroceryItems();
+    setStatus("Cleared entire grocery list.");
+    focusItemInput();
   };
 
   const onRemove = (id) => {
     actions.removeGroceryItem(id);
-    setStatusMsg("Removed item.");
-    clearStatusSoon();
+    setStatus("Removed item.");
   };
 
   return (
     <div className="container">
-      <h1 className="pageTitle">Grocery list</h1>
-      <p className="pageSubtitle">Build a shopping list from recipes and check items off as you go.</p>
-
-      <div className="kpiRow" aria-label="Grocery list stats">
-        <div className="kpi">
-          <strong>Total items</strong>
-          <span>{stats.total}</span>
+      <div className="resultsHeader" style={{ marginBottom: 10 }}>
+        <div>
+          <h1 className="pageTitle">Grocery list</h1>
+          <p className="pageSubtitle" style={{ marginBottom: 0 }}>
+            Build a shopping list, check items off, and clear what you’ve purchased.
+          </p>
         </div>
-        <div className="kpi">
-          <strong>Checked</strong>
-          <span>{stats.checked}</span>
+
+        <div className="resultsHeaderMeta" aria-label="Grocery list actions">
+          <span className="badge" aria-label="Grocery item count">
+            {stats.total} items
+          </span>
+          <span className="badge" aria-label="Checked item count">
+            {stats.checked} checked
+          </span>
+
+          <button
+            type="button"
+            className="btn btnGhost"
+            onClick={onClearChecked}
+            disabled={!stats.checked}
+            aria-disabled={!stats.checked}
+            title={!stats.checked ? "No checked items to clear" : "Remove checked items from your list"}
+          >
+            Clear checked
+          </button>
+
+          <button
+            type="button"
+            className="btn btnGhost"
+            onClick={onClearAll}
+            disabled={!stats.total}
+            aria-disabled={!stats.total}
+            aria-label="Clear all grocery items"
+            title={!stats.total ? "Your list is already empty" : "Remove everything from your grocery list"}
+          >
+            Clear all
+          </button>
         </div>
       </div>
-
-      <div style={{ height: 14 }} />
 
       <section className="card" aria-label="Add grocery item">
         <div className="cardHeader">
@@ -124,7 +189,7 @@ export function GroceryListPage() {
           <span className="small">Stored locally in your browser.</span>
         </div>
         <div className="cardBody">
-          <form onSubmit={onAdd} aria-describedby="grocery-form-help">
+          <form onSubmit={onAdd} aria-describedby="grocery-form-help grocery-inline-message">
             <div className="row">
               <div className="field">
                 <label htmlFor="item">Item</label>
@@ -133,11 +198,15 @@ export function GroceryListPage() {
                   id="item"
                   className="input"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (inlineMsg) resetInline();
+                  }}
                   onKeyDown={onNameKeyDown}
                   placeholder="e.g., Tomatoes"
                   autoComplete="off"
-                  aria-describedby="grocery-form-help"
+                  aria-describedby="grocery-form-help grocery-inline-message"
+                  aria-invalid={Boolean(inlineMsg)}
                 />
               </div>
               <div className="field">
@@ -155,31 +224,43 @@ export function GroceryListPage() {
             </div>
 
             <p id="grocery-form-help" className="helper" style={{ marginTop: 10 }}>
-              Tip: Press <b>Enter</b> to add quickly. Duplicates are prevented (case/spacing-insensitive).
+              Tip: Press <b>Enter</b> to add quickly. Names are trimmed and spacing is normalized. Duplicates are prevented
+              (case/spacing-insensitive).
             </p>
 
-            {hasDuplicateInList ? (
+            {inlineMsg ? (
+              <div
+                id="grocery-inline-message"
+                className="notice"
+                role="alert"
+                aria-label="Grocery form message"
+                style={{ marginTop: 10 }}
+              >
+                {inlineMsg}
+              </div>
+            ) : (
+              <div id="grocery-inline-message" className="sr-only" aria-hidden="true" />
+            )}
+
+            {duplicateItem ? (
               <div className="noticeInfo" role="note" aria-label="Duplicate item note">
-                This item is already on your list. Adding again will move it to the top (and update quantity if provided).
+                “{duplicateItem.name}” is already on your list. Adding again will move it to the top (and update quantity
+                if provided).
               </div>
             ) : null}
 
             <div className="row" style={{ marginTop: 14 }}>
-              <button type="submit" className="btn btnPrimary" disabled={!normalizeText(name)}>
-                Add to list
-              </button>
               <button
-                type="button"
-                className="btn btnGhost"
-                onClick={onClearChecked}
-                disabled={!stats.checked}
-                aria-disabled={!stats.checked}
+                type="submit"
+                className="btn btnPrimary"
+                disabled={!normalizeText(name)}
+                aria-disabled={!normalizeText(name)}
               >
-                Clear checked
+                Add to list
               </button>
             </div>
 
-            {/* Accessible live region for lightweight feedback */}
+            {/* Accessible live region for lightweight feedback (non-critical) */}
             <div className="sr-only" aria-live="polite">
               {statusMsg}
             </div>
@@ -190,16 +271,16 @@ export function GroceryListPage() {
       <div style={{ height: 14 }} />
 
       <section aria-label="Grocery items">
-        {state.groceryItems?.length ? (
+        {items.length ? (
           <div className="card">
             <div className="cardBody">
               <ul className="list" aria-label="Grocery list items">
-                {state.groceryItems.map((i) => (
+                {items.map((i) => (
                   <li key={i.id} className="listRow">
                     <input
                       id={`g-check-${i.id}`}
                       type="checkbox"
-                      checked={i.checked}
+                      checked={Boolean(i.checked)}
                       onChange={() => actions.toggleGroceryChecked(i.id)}
                       aria-label={`Mark ${i.name} as ${i.checked ? "not purchased" : "purchased"}`}
                     />
@@ -219,6 +300,7 @@ export function GroceryListPage() {
                       type="button"
                       onClick={() => onRemove(i.id)}
                       aria-label={`Remove ${i.name} from list`}
+                      title="Remove item"
                     >
                       Remove
                     </button>
