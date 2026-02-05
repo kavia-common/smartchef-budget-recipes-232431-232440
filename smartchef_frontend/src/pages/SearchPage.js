@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { searchRecipes } from "../api/client";
-import { isExperimentsEnabled, isFeatureEnabled } from "../config/flags";
+import { isFeatureEnabled } from "../config/flags";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { useAppState } from "../state/AppStateContext";
 import { RecipeCard } from "../components/RecipeCard";
@@ -78,7 +78,9 @@ function RecipeSkeletonGrid({ count = 6 }) {
  */
 export function SearchPage() {
   const { state } = useAppState();
-  const voiceEnabled = isFeatureEnabled("voice") || isExperimentsEnabled();
+
+  // Feature flags are default-off; voice UI should only render when explicitly enabled.
+  const voiceEnabled = isFeatureEnabled("voice");
 
   const [ingredients, setIngredients] = useState("chicken, rice, onion");
   const [diet, setDiet] = useState("");
@@ -278,24 +280,37 @@ export function SearchPage() {
                   Clear ingredients
                 </button>
 
-                {canVoice ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btnGhost"
-                      onClick={speech.listening ? speech.stop : speech.start}
-                      aria-pressed={speech.listening}
-                      aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
-                    >
-                      {speech.listening ? "Stop voice" : "Add by voice"}
-                    </button>
+                {voiceEnabled ? (
+                  canVoice ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btnGhost"
+                        onClick={speech.listening ? speech.stop : speech.start}
+                        aria-pressed={speech.listening}
+                        aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
+                        aria-describedby="voice-help"
+                      >
+                        {speech.listening ? "Stop voice" : "Add by voice"}
+                      </button>
+                      <span className="helper" style={{ marginTop: 0 }} id="voice-help">
+                        Uses your browser’s Web Speech API.
+                        {speech.error
+                          ? speech.error === "not-allowed" || speech.error === "service-not-allowed"
+                            ? " Microphone permission was denied. Allow microphone access in your browser settings to use voice input."
+                            : ` Voice input error: ${speech.error}.`
+                          : ""}
+                      </span>
+                    </>
+                  ) : (
                     <span className="helper" style={{ marginTop: 0 }} id="voice-help">
-                      Uses your browser’s Web Speech API. {speech.error ? `Error: ${speech.error}` : ""}
+                      Voice input is enabled, but this browser doesn’t support speech recognition. You can still type ingredients normally.
                     </span>
-                  </>
+                  )
                 ) : (
                   <span className="helper" style={{ marginTop: 0 }} id="voice-help">
-                    Voice input is optional. Enable with <code>REACT_APP_FEATURE_FLAGS=voice</code> (and a supported browser).
+                    Voice input is optional and off by default. To enable it, set{" "}
+                    <code>REACT_APP_FEATURE_FLAGS=voice</code>.
                   </span>
                 )}
               </div>
