@@ -32,10 +32,16 @@ export function RecipeDetailPage() {
           return;
         }
 
-        const details = await getRecipeDetails({ provider, id });
-        if (!cancelled) {
-          setRecipe(details || null);
+        const res = await getRecipeDetails({ provider, id });
+        if (cancelled) return;
+
+        if (res?.error) {
+          setError(res.error.message || "Failed to load recipe details");
+          setRecipe(null);
+          return;
         }
+
+        setRecipe(res?.recipe || null);
       } catch (e) {
         if (!cancelled) setError(e?.message || "Failed to load recipe details");
       } finally {
