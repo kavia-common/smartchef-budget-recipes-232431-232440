@@ -23,11 +23,16 @@ function reducer(state, action) {
       return { ...state, currency: action.currency };
 
     case "toggleFavorite": {
+      // Note: favorites are stored locally; order is "most recently added first".
       const exists = state.favorites.some((r) => r.id === action.recipe.id);
       const favorites = exists
         ? state.favorites.filter((r) => r.id !== action.recipe.id)
         : [action.recipe, ...state.favorites];
       return { ...state, favorites };
+    }
+
+    case "clearFavorites": {
+      return { ...state, favorites: [] };
     }
 
     case "addGroceryItem": {
@@ -73,6 +78,11 @@ function buildActions(dispatch) {
     // PUBLIC_INTERFACE
     toggleFavorite(recipe) {
       dispatch({ type: "toggleFavorite", recipe });
+    },
+    // PUBLIC_INTERFACE
+    clearFavorites() {
+      /** Clear all favorites (local-only). */
+      dispatch({ type: "clearFavorites" });
     },
     // PUBLIC_INTERFACE
     addGroceryItem(name, qty) {
